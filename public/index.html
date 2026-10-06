@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Hostel Management System - AWS EC2 Release Pipeline</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .tab-btn.active {
+            border-bottom: 3px solid #2563eb;
+            color: #2563eb;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- TOP BAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow">
+                        <i class="fa-solid fa-hotel"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-extrabold text-base sm:text-lg tracking-tight text-slate-900">HostelCloud AWS</span>
+                            <span class="bg-blue-100 text-blue-800 text-[11px] px-2.5 py-0.5 rounded-full font-bold">Dev-to-Prod Pipeline</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Agile-Governed Release on AWS EC2 + S3 + CloudWatch</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <div class="hidden sm:flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full text-xs font-semibold text-emerald-700">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="env-badge">EC2 Live</span>
+                    </div>
+
+                    <div class="bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg text-xs">
+                        <span class="text-slate-500">Candidate:</span>
+                        <span class="font-bold text-slate-800">A. Jayaraajan (24MIS0052)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="flex space-x-6 border-t border-slate-100 overflow-x-auto text-xs sm:text-sm text-slate-600">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active py-3 px-1 flex items-center space-x-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard & S3 Logs</span>
+                </button>
+                <button onclick="switchTab('rooms')" id="tab-rooms" class="tab-btn py-3 px-1 flex items-center space-x-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-brain text-purple-600"></i>
+                    <span>Smart Room Allocation</span>
+                    <span class="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.2 rounded font-bold">Novelty 1</span>
+                </button>
+                <button onclick="switchTab('complaints')" id="tab-complaints" class="tab-btn py-3 px-1 flex items-center space-x-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                    <span>Complaint Prioritization</span>
+                    <span class="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.2 rounded font-bold">Novelty 2</span>
+                </button>
+                <button onclick="switchTab('agile')" id="tab-agile" class="tab-btn py-3 px-1 flex items-center space-x-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-code-branch text-indigo-600"></i>
+                    <span>Agile Sprint 2 Kanban</span>
+                    <span class="bg-indigo-100 text-indigo-700 text-[10px] px-1.5 py-0.2 rounded font-bold">Novelty 3</span>
+                </button>
+                <button onclick="switchTab('leave')" id="tab-leave" class="tab-btn py-3 px-1 flex items-center space-x-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+                    <span>Digital Leave</span>
+                    <span class="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.2 rounded font-bold">Novelty 4</span>
+                </button>
+                <button onclick="switchTab('students')" id="tab-students" class="tab-btn py-3 px-1 flex items-center space-x-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Students & Operations</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- 1. DASHBOARD & S3 AUDIT -->
+        <section id="view-dashboard" class="space-y-6">
+            <!-- Metric Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Hostel Occupancy</p>
+                        <h3 id="stat-occupancy" class="text-2xl font-black text-slate-800 mt-1">--%</h3>
+                        <p class="text-[11px] text-slate-500">Live bed counter</p>
+                    </div>
+                    <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-bed"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Critical Complaints</p>
+                        <h3 id="stat-critical" class="text-2xl font-black text-rose-600 mt-1">--</h3>
+                        <p class="text-[11px] text-rose-500">Urgent attention</p>
+                    </div>
+                    <div class="w-10 h-10 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-fire"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Agile Sprint 2 Tasks</p>
+                        <h3 id="stat-sprint" class="text-2xl font-black text-indigo-600 mt-1">--</h3>
+                        <p class="text-[11px] text-indigo-500">Stories & tasks</p>
+                    </div>
+                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">S3 Cloud Backups</p>
+                        <h3 id="stat-s3-backups" class="text-2xl font-black text-amber-600 mt-1">--</h3>
+                        <p class="text-[11px] text-amber-600">S3 PutObject triggers</p>
+                    </div>
+                    <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-brands fa-aws"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AWS Pipeline & S3 Integration Banner -->
+            <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <div class="relative z-10">
+                    <div class="flex items-center space-x-2 text-amber-400 text-xs font-bold uppercase tracking-wider mb-2">
+                        <i class="fa-brands fa-aws"></i> AWS Cloud Architecture & Agile Release Governance
+                    </div>
+                    <h2 class="text-xl font-bold">Smart Hostel Management System on AWS EC2</h2>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-2 max-w-3xl leading-relaxed">
+                        Features an automated release pipeline bridging Development (`dev-server`) and Production (`prod-server`) EC2 instances. Whenever rooms are assigned, complaints filed, or leaves approved, real-time snapshot backups are dispatched automatically to <strong>Amazon S3</strong>, with host health watched by <strong>Amazon CloudWatch</strong>.
+                    </p>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-700/60 text-xs">
+                        <div>
+                            <span class="text-slate-400 block">EC2 Instances:</span>
+                            <span class="font-semibold text-white">dev-server & prod-server</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Cloud Storage:</span>
+                            <span class="font-semibold text-white">Amazon S3 Auto-Backups</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Monitoring:</span>
+                            <span class="font-semibold text-white">Amazon CloudWatch CPU Alarms</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Governance:</span>
+                            <span class="font-semibold text-white">Agile Sprints & Git Branching</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- S3 Backup Log Stream & Quick Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- S3 Log Stream -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                            <i class="fa-brands fa-aws text-amber-500"></i>
+                            <span>Amazon S3 Backup Audit Stream</span>
+                        </h4>
+                        <span id="s3-bucket-label" class="text-[10px] bg-amber-100 text-amber-800 font-mono px-2 py-0.5 rounded font-bold">s3://...</span>
+                    </div>
+                    <div id="s3-logs-container" class="space-y-2 text-xs max-h-56 overflow-y-auto">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Mess & Visitor quick glimpse -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-utensils text-orange-500"></i>
+                        <span>Today's Hostel Mess Menu</span>
+                    </h4>
+                    <div id="mess-menu-card" class="space-y-1.5 text-xs text-slate-600">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. NOVELTY 1: SMART ROOM ALLOCATION -->
+        <section id="view-rooms" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="pb-3 mb-4 border-b border-slate-100">
+                    <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-brain text-purple-600"></i>
+                        <span>Novelty 1: Smart Room Recommendation Engine</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">
+                        Dynamically scores rooms based on capacity headroom, floor preference, AC/Non-AC selection, and peer cohort tags.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-purple-50/60 p-4 rounded-xl border border-purple-100 space-y-3">
+                        <h4 class="text-xs font-bold text-purple-900 uppercase">Input Student Preferences</h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Student</label>
+                            <select id="pref-student" class="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Room Type</label>
+                            <select id="pref-type" class="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                                <option value="AC">AC Room</option>
+                                <option value="Non-AC" selected>Non-AC Room</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Preferred Floor</label>
+                            <select id="pref-floor" class="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                                <option value="1">1st Floor (Easy Access)</option>
+                                <option value="2">2nd Floor (Quiet Study)</option>
+                            </select>
+                        </div>
+                        <button onclick="calculateRoomMatch()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs py-2 rounded-lg transition shadow">
+                            Run Smart Match Algorithm
+                        </button>
+                    </div>
+
+                    <div class="md:col-span-2 space-y-4">
+                        <div id="room-match-card" class="hidden bg-white p-4 rounded-xl border-2 border-purple-500 shadow-sm">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded">Highest Ranked Match</span>
+                                    <h4 id="match-room-no" class="text-xl font-extrabold text-slate-900 mt-1">Room A-101</h4>
+                                    <p id="match-reasons" class="text-xs text-slate-600 mt-1"></p>
+                                </div>
+                                <div class="text-right">
+                                    <div id="match-score" class="text-2xl font-black text-purple-600">--</div>
+                                    <div class="text-[10px] text-slate-400">Match Points</div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                <button onclick="confirmRoomAllocation()" class="bg-slate-900 hover:bg-black text-white text-xs px-4 py-2 rounded-lg font-medium">
+                                    Confirm Allocation & Sync to S3
+                                </button>
+                            </div>
+                        </div>
+
+                        <h4 class="text-xs font-bold text-slate-700 uppercase">Live Hostel Rooms Roster</h4>
+                        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                            <table class="w-full text-xs text-left text-slate-600">
+                                <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                                    <tr>
+                                        <th class="p-2">Room</th>
+                                        <th class="p-2">Type</th>
+                                        <th class="p-2">Floor</th>
+                                        <th class="p-2">Occupancy</th>
+                                        <th class="p-2">Tags</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rooms-table" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. NOVELTY 2: SMART COMPLAINT PRIORITIZATION -->
+        <section id="view-complaints" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Submit Form -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                        <span>Novelty 2: File Complaint</span>
+                    </h3>
+                    <p class="text-xs text-slate-500">Auto-prioritizes hazards into <strong>Critical, High, Medium, Low</strong>.</p>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Student</label>
+                        <select id="comp-student" class="w-full text-xs p-2 rounded-lg border border-slate-300"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+                        <select id="comp-category" class="w-full text-xs p-2 rounded-lg border border-slate-300">
+                            <option value="Electrical">Electrical (Power, Sparks, Short Circuit)</option>
+                            <option value="Plumbing">Plumbing (Water, Leakage, Taps)</option>
+                            <option value="Wi-Fi / Internet">Wi-Fi & Internet</option>
+                            <option value="Carpentry">Carpentry & Furniture</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Description</label>
+                        <textarea id="comp-desc" rows="3" placeholder="e.g. Sparking sound and smoke smell coming from switchboard" class="w-full text-xs p-2 rounded-lg border border-slate-300"></textarea>
+                    </div>
+                    <button onclick="submitComplaint()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-2 rounded-lg transition shadow">
+                        File & Auto-Classify (S3 Backed)
+                    </button>
+                </div>
+
+                <!-- Complaints Queue -->
+                <div class="md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                        <h4 class="font-bold text-slate-800 text-sm">Prioritized Complaints Queue</h4>
+                        <span class="text-xs text-slate-500">Sorted by urgency</span>
+                    </div>
+                    <div id="complaints-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. NOVELTY 3: AGILE SPRINT 2 KANBAN -->
+        <section id="view-agile" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex justify-between items-start flex-wrap gap-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                            <i class="fa-solid fa-code-branch text-indigo-600"></i>
+                            <span>Novelty 3: Student Feedback Converted to Agile Sprint Backlog</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+                            Bridging student feedback directly with Agile software and hostel operational sprints with estimated Fibonacci story points.
+                        </p>
+                    </div>
+                    <button onclick="openFeedbackModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-lg font-semibold flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>New Feedback Story</span>
+                    </button>
+                </div>
+
+                <!-- Kanban Columns -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-100">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-bold uppercase text-slate-600">To Do</span>
+                            <span id="badge-todo" class="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="kanban-todo" class="space-y-2 min-h-[140px]"></div>
+                    </div>
+
+                    <div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-bold uppercase text-indigo-700">In Progress (Sprint 2)</span>
+                            <span id="badge-inprog" class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="kanban-inprog" class="space-y-2 min-h-[140px]"></div>
+                    </div>
+
+                    <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-bold uppercase text-emerald-700">Done / Delivered</span>
+                            <span id="badge-done" class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="kanban-done" class="space-y-2 min-h-[140px]"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. NOVELTY 4: DIGITAL LEAVE -->
+        <section id="view-leave" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Apply Form -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+                        <span>Novelty 4: Digital Leave Request</span>
+                    </h3>
+                    <p class="text-xs text-slate-500">Student applies $\to$ Warden reviews $\to$ Instant gatepass status.</p>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Student</label>
+                        <select id="leave-student" class="w-full text-xs p-2 rounded-lg border border-slate-300"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Reason</label>
+                        <input type="text" id="leave-reason" placeholder="e.g. Attending Sister's Wedding" class="w-full text-xs p-2 rounded-lg border border-slate-300" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">From</label>
+                            <input type="date" id="leave-from" class="w-full text-xs p-2 rounded-lg border border-slate-300" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">To</label>
+                            <input type="date" id="leave-to" class="w-full text-xs p-2 rounded-lg border border-slate-300" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Parent Phone</label>
+                        <input type="tel" id="leave-parent" placeholder="+91 9876543210" class="w-full text-xs p-2 rounded-lg border border-slate-300" />
+                    </div>
+                    <button onclick="submitLeave()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 rounded-lg transition shadow">
+                        Submit Leave (S3 Backed)
+                    </button>
+                </div>
+
+                <!-- Warden Review Queue -->
+                <div class="md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                        <h4 class="font-bold text-slate-800 text-sm">Warden Leave Authorization Queue</h4>
+                        <span class="text-xs text-slate-500">Live approval sync</span>
+                    </div>
+                    <div id="leaves-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. STUDENTS & OPERATIONS -->
+        <section id="view-students" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <h3 class="text-base font-bold text-slate-900">Student Directory & Hostel Status</h3>
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-xs text-left text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="p-2.5">Reg No</th>
+                                <th class="p-2.5">Name</th>
+                                <th class="p-2.5">Dept & Year</th>
+                                <th class="p-2.5">Room</th>
+                                <th class="p-2.5">Fee Status</th>
+                                <th class="p-2.5">Gate Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-table" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FEEDBACK MODAL -->
+    <div id="feedback-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 text-sm">Convert Student Feedback into Agile Task</h3>
+                <button onclick="closeFeedbackModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Feedback Category</label>
+                <select id="fb-cat" class="w-full text-xs p-2 rounded-lg border border-slate-300">
+                    <option value="Mess Food">Mess Food & Nutrition</option>
+                    <option value="Wi-Fi Quality">Wi-Fi & Network Infrastructure</option>
+                    <option value="Gym/Sports">Gym & Sports Facilities</option>
+                    <option value="Hostel Policy">Hostel Policy & Security</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Student Feedback</label>
+                <textarea id="fb-text" rows="3" placeholder="Describe the hostel improvement needed..." class="w-full text-xs p-2 rounded-lg border border-slate-300"></textarea>
+            </div>
+            <button onclick="submitAgileFeedback()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2.5 rounded-lg transition shadow">
+                Estimate Story Points & Push to S3
+            </button>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto">
+        <p>Smart Hostel Management System &copy; 2026. Designed for <strong>Agile Development Process & DevOps Lab</strong>.</p>
+        <p class="mt-1">Candidate: <strong>A. Jayaraajan (24MIS0052)</strong> | AWS Architecture: <strong>EC2 (Dev & Prod) + S3 + CloudWatch</strong></p>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        let cachedStudents = [];
+        let cachedRooms = [];
+        let currentMatchRoom = null;
+        let selectedStudentAlloc = null;
+
+        function switchTab(name) {
+            document.querySelectorAll('section[id^="view-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            const view = document.getElementById(`view-${name}`);
+            const btn = document.getElementById(`tab-${name}`);
+            if (view) view.classList.remove('hidden');
+            if (btn) btn.classList.add('active');
+
+            if (name === 'dashboard') loadDashboard();
+            if (name === 'rooms') loadRooms();
+            if (name === 'complaints') loadComplaints();
+            if (name === 'agile') loadAgile();
+            if (name === 'leave') loadLeaves();
+            if (name === 'students') loadStudents();
+        }
+
+        async function init() {
+            await loadDashboard();
+            await loadStudents();
+        }
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/metrics');
+                const m = await res.json();
+                document.getElementById('stat-occupancy').innerText = `${m.occupancy_rate}%`;
+                document.getElementById('stat-critical').innerText = m.critical_complaints;
+                document.getElementById('stat-sprint').innerText = m.agile_sprint_tasks;
+                document.getElementById('stat-s3-backups').innerText = m.s3_backup_count;
+
+                // S3 Logs
+                const s3Res = await fetch('/api/s3/backups');
+                const s3Data = await s3Res.json();
+                document.getElementById('s3-bucket-label').innerText = `s3://${s3Data.bucket}`;
+                
+                const s3Container = document.getElementById('s3-logs-container');
+                if (s3Data.logs.length === 0) {
+                    s3Container.innerHTML = '<p class="text-slate-400 italic">No backups triggered yet. Perform an action to sync to S3.</p>';
+                } else {
+                    s3Container.innerHTML = s3Data.logs.map(log => `
+                        <div class="p-2 rounded bg-slate-50 border border-slate-200 flex justify-between items-center text-[11px]">
+                            <div>
+                                <span class="font-bold text-slate-800">${log.action}</span>
+                                <span class="text-slate-400 block font-mono text-[10px]">${log.key}</span>
+                            </div>
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${log.status.includes('SUCCESS') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                ${log.status}
+                            </span>
+                        </div>
+                    `).join('');
+                }
+
+                // Mess
+                const messRes = await fetch('/api/mess');
+                const mess = await messRes.json();
+                document.getElementById('mess-menu-card').innerHTML = `
+                    <p><strong class="text-slate-800">Breakfast:</strong> ${mess.breakfast}</p>
+                    <p><strong class="text-slate-800">Lunch:</strong> ${mess.lunch}</p>
+                    <p><strong class="text-slate-800">Snacks:</strong> ${mess.snacks}</p>
+                    <p><strong class="text-slate-800">Dinner:</strong> ${mess.dinner}</p>
+                `;
+            } catch(e) { console.error(e); }
+        }
+
+        async function loadStudents() {
+            const res = await fetch('/api/students');
+            cachedStudents = await res.json();
+            const options = cachedStudents.map(s => `<option value="${s.id}">${s.name} (${s.reg_no}) - Room: ${s.room_number}</option>`).join('');
+            ['pref-student', 'comp-student', 'leave-student'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = options;
+            });
+
+            const table = document.getElementById('students-table');
+            if (table) {
+                table.innerHTML = cachedStudents.map(s => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2.5 font-mono font-semibold">${s.reg_no}</td>
+                        <td class="p-2.5 font-bold text-slate-800">${s.name}</td>
+                        <td class="p-2.5">${s.department} (Yr ${s.year})</td>
+                        <td class="p-2.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-slate-700 font-semibold">${s.room_number}</span></td>
+                        <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.fee_status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${s.fee_status}</span></td>
+                        <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.checkin_status === 'Checked-In' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}">${s.checkin_status}</span></td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Novelty 1: Room Allocation
+        async function loadRooms() {
+            const res = await fetch('/api/rooms');
+            cachedRooms = await res.json();
+            document.getElementById('rooms-table').innerHTML = cachedRooms.map(r => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2 font-bold text-slate-800">${r.room_no}</td>
+                    <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${r.type === 'AC' ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-200 text-slate-700'}">${r.type}</span></td>
+                    <td class="p-2">Floor ${r.floor}</td>
+                    <td class="p-2 font-mono">${r.current_occupancy} / ${r.capacity}</td>
+                    <td class="p-2">${r.tags.map(t => `<span class="bg-purple-100 text-purple-700 text-[10px] px-1 py-0.5 rounded mr-1">${t}</span>`).join('')}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function calculateRoomMatch() {
+            const sId = document.getElementById('pref-student').value;
+            const pType = document.getElementById('pref-type').value;
+            const pFloor = document.getElementById('pref-floor').value;
+            selectedStudentAlloc = sId;
+
+            const res = await fetch('/api/rooms/smart-recommend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ preferred_type: pType, preferred_floor: pFloor })
+            });
+            const data = await res.json();
+            if (data.topMatch) {
+                currentMatchRoom = data.topMatch.room_no;
+                document.getElementById('match-room-no').innerText = `Room ${data.topMatch.room_no} (${data.topMatch.type})`;
+                document.getElementById('match-reasons').innerText = `Ranked #1: ${data.topMatch.reasons}`;
+                document.getElementById('match-score').innerText = `${data.topMatch.score} pts`;
+                document.getElementById('room-match-card').classList.remove('hidden');
+            }
+        }
+
+        async function confirmRoomAllocation() {
+            if (!currentMatchRoom || !selectedStudentAlloc) return;
+            const res = await fetch('/api/rooms/allocate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: selectedStudentAlloc, room_no: currentMatchRoom })
+            });
+            if (res.ok) {
+                alert(`Room ${currentMatchRoom} assigned & backed up to Amazon S3!`);
+                document.getElementById('room-match-card').classList.add('hidden');
+                loadRooms();
+                loadStudents();
+                loadDashboard();
+            }
+        }
+
+        // Novelty 2: Complaints
+        async function loadComplaints() {
+            const res = await fetch('/api/complaints');
+            const list = await res.json();
+            document.getElementById('complaints-list').innerHTML = list.map(c => `
+                <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-start text-xs">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${c.priority === 'Critical' ? 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse' : c.priority === 'High' ? 'bg-orange-100 text-orange-800' : 'bg-amber-100 text-amber-800'}">${c.priority}</span>
+                            <span class="font-bold text-slate-800">${c.category}</span>
+                            <span class="text-slate-400">• Room ${c.room_number} (${c.student_name})</span>
+                        </div>
+                        <p class="text-slate-700">${c.description}</p>
+                    </div>
+                    <select onchange="updateCompStatus('${c.id}', this.value)" class="text-[11px] p-1 rounded border border-slate-300 bg-white font-semibold">
+                        <option value="Open" ${c.status === 'Open' ? 'selected' : ''}>Open</option>
+                        <option value="In Progress" ${c.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Resolved" ${c.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                    </select>
+                </div>
+            `).join('');
+        }
+
+        async function submitComplaint() {
+            const sId = document.getElementById('comp-student').value;
+            const student = cachedStudents.find(s => s.id === sId);
+            const cat = document.getElementById('comp-category').value;
+            const desc = document.getElementById('comp-desc').value;
+            if (!desc) return alert('Please enter description');
+
+            const res = await fetch('/api/complaints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: sId,
+                    student_name: student ? student.name : "Student",
+                    room_number: student ? student.room_number : "A-101",
+                    category: cat,
+                    description: desc
+                })
+            });
+            if (res.ok) {
+                document.getElementById('comp-desc').value = '';
+                loadComplaints();
+                loadDashboard();
+            }
+        }
+
+        async function updateCompStatus(id, status) {
+            await fetch(`/api/complaints/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            loadComplaints();
+            loadDashboard();
+        }
+
+        // Novelty 3: Agile Sprint
+        async function loadAgile() {
+            const res = await fetch('/api/agile/backlog');
+            const items = await res.json();
+
+            const todo = items.filter(i => i.status === 'To Do');
+            const inprog = items.filter(i => i.status === 'In Progress');
+            const done = items.filter(i => i.status === 'Done');
+
+            document.getElementById('badge-todo').innerText = todo.length;
+            document.getElementById('badge-inprog').innerText = inprog.length;
+            document.getElementById('badge-done').innerText = done.length;
+
+            const card = i => `
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-1.5 text-xs">
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-slate-800 leading-tight">${i.title}</span>
+                        <span class="bg-indigo-100 text-indigo-800 text-[10px] font-black px-1.5 py-0.5 rounded">${i.story_points} SP</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 line-clamp-2">${i.description}</p>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+                        <span class="text-[10px] text-slate-400 font-mono">${i.id}</span>
+                        <select onchange="updateAgileStatus('${i.id}', this.value)" class="text-[10px] p-0.5 rounded border border-slate-200 bg-white">
+                            <option value="To Do" ${i.status === 'To Do' ? 'selected' : ''}>To Do</option>
+                            <option value="In Progress" ${i.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Done" ${i.status === 'Done' ? 'selected' : ''}>Done</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('kanban-todo').innerHTML = todo.map(card).join('') || '<p class="text-[11px] text-slate-400 italic">No tasks in To Do</p>';
+            document.getElementById('kanban-inprog').innerHTML = inprog.map(card).join('') || '<p class="text-[11px] text-slate-400 italic">No tasks in progress</p>';
+            document.getElementById('kanban-done').innerHTML = done.map(card).join('') || '<p class="text-[11px] text-slate-400 italic">No completed tasks</p>';
+        }
+
+        async function updateAgileStatus(id, status) {
+            await fetch(`/api/agile/backlog/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            loadAgile();
+            loadDashboard();
+        }
+
+        function openFeedbackModal() { document.getElementById('feedback-modal').classList.remove('hidden'); }
+        function closeFeedbackModal() { document.getElementById('feedback-modal').classList.add('hidden'); }
+
+        async function submitAgileFeedback() {
+            const cat = document.getElementById('fb-cat').value;
+            const text = document.getElementById('fb-text').value;
+            if (!text) return alert('Please enter feedback');
+
+            const res = await fetch('/api/agile/feedback-to-sprint', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_name: "A. Jayaraajan",
+                    category: cat,
+                    feedback_text: text
+                })
+            });
+            if (res.ok) {
+                closeFeedbackModal();
+                document.getElementById('fb-text').value = '';
+                loadAgile();
+                loadDashboard();
+            }
+        }
+
+        // Novelty 4: Digital Leave
+        async function loadLeaves() {
+            const res = await fetch('/api/leave');
+            const leaves = await res.json();
+            document.getElementById('leaves-list').innerHTML = leaves.map(l => `
+                <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-start text-xs">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${l.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : l.status === 'Rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">${l.status}</span>
+                            <span class="font-bold text-slate-800">${l.student_name} (${l.room_number})</span>
+                            <span class="text-slate-400 text-[10px]">• ${l.from_date} to ${l.to_date}</span>
+                        </div>
+                        <p class="text-slate-700"><strong>Reason:</strong> ${l.reason}</p>
+                        <p class="text-slate-500 text-[11px]">Parent: ${l.parent_contact} | Remarks: ${l.warden_remarks || 'None'}</p>
+                    </div>
+                    ${l.status === 'Pending' ? `
+                        <div class="flex space-x-1">
+                            <button onclick="reviewLeave('${l.id}', 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] px-2.5 py-1 rounded font-semibold">Approve</button>
+                            <button onclick="reviewLeave('${l.id}', 'Rejected')" class="bg-rose-600 hover:bg-rose-700 text-white text-[11px] px-2.5 py-1 rounded font-semibold">Reject</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function submitLeave() {
+            const sId = document.getElementById('leave-student').value;
+            const student = cachedStudents.find(s => s.id === sId);
+            const reason = document.getElementById('leave-reason').value;
+            const from = document.getElementById('leave-from').value;
+            const to = document.getElementById('leave-to').value;
+            const parent = document.getElementById('leave-parent').value;
+
+            if (!reason || !from || !to || !parent) return alert('Fill out all fields');
+
+            const res = await fetch('/api/leave', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: sId,
+                    student_name: student ? student.name : "Student",
+                    room_number: student ? student.room_number : "A-101",
+                    reason,
+                    from_date: from,
+                    to_date: to,
+                    parent_contact: parent
+                })
+            });
+            if (res.ok) {
+                alert('Leave request submitted & backed up to Amazon S3!');
+                loadLeaves();
+                loadDashboard();
+            }
+        }
+
+        async function reviewLeave(id, status) {
+            await fetch(`/api/leave/${id}/review`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, remarks: "Authorized by Chief Warden" })
+            });
+            loadLeaves();
+            loadDashboard();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "smart-hostel-aws-pipeline",
+  "version": "1.0.0",
+  "description": "An Agile-Governed Automated Release Pipeline for Dev-to-Production Deployment of a Cloud Web Application on AWS EC2",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1585.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
