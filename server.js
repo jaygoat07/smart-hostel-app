@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 1. AWS S3 CONFIGURATION & BACKUP SERVICE
 // ==============================================================================
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'smart-hostel-backups-24mis0052';
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'smart-hostel-backup-24mis0052';
 
 const s3 = new AWS.S3({ region: AWS_REGION });
 
